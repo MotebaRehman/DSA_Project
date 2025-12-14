@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Infectious Disease Spread Simulator</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 20px;
+            padding: 20px;
+            max-width: 1600px;
+            margin: 0 auto;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .main-section {
+            display: grid;
+            grid-template-rows: auto auto;
+            gap: 20px;
+            overflow-y: auto;
+            height: 100%;
+        }
+
+        .card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            overflow: hidden;
+            width: 100%;
+            height: 90vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        h2 {
+            margin-bottom: 15px;
+            font-size: 18px;
+            color: #222;
+            flex-shrink: 0;
+        }
+
+        #network {
+            width: 100%;
+            height: 100%;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            display: block;
+            flex: 1;
+            min-height: 0;
+            min-width: 0;
+            overflow: hidden !important;
+            max-width: 100%;
+            max-height: 100%;
+        }
+
+        #chart {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            display: block;
+            flex: 1;
+            min-height: 0;
+            min-width: 0;
+            overflow: hidden !important;
+            max-width: 100%;
+            max-height: 100%;
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            overflow-y: auto;
+            max-height: 100vh;
+            height: 100%;
+        }
+
+        .control-panel {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #555;
+        }
+
+        input[type="number"],
+        input[type="range"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+
+        input[type="range"] {
+            padding: 0;
+            height: 4px;
+        }
+
+        .value-display {
+            font-size: 12px;
+            color: #888;
+            margin-top: 3px;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #007bff;
+            color: white;
+            margin-bottom: 10px;
+        }
+
+        .btn-primary:hover {
+            background: #0056b3;
+        }
+
+        .btn-primary:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: #28a745;
+            color: white;
+            margin-bottom: 8px;
+        }
+
+        .btn-secondary:hover {
+            background: #218838;
+        }
+
+        .btn-secondary:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .stats-box {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            padding: 15px;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 13px;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .stat-row:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+
+        .stat-label {
+            font-weight: 600;
+            color: #555;
+        }
+
+        .stat-value {
+            font-weight: 700;
+            font-size: 14px;
+        }
+
+        .stat-susceptible {
+            color: #28a745;
+        }
+
+        .stat-infected {
+            color: #dc3545;
+        }
+
+        .stat-recovered {
+            color: #007bff;
+        }
+
+        .legend {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            padding: 15px;
+            font-size: 12px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .legend-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+
+        .status {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            padding: 15px;
+            font-size: 13px;
+            color: #666;
+            text-align: center;
+        }
+
+        .day-counter {
+            font-size: 24px;
+            font-weight: bold;
+            text-align: center;
+            color: #007bff;
+            margin-bottom: 10px;
+        }
+
+        h3 {
+            font-size: 12px;
+            text-transform: uppercase;
+            color: #888;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        @media (max-width: 1200px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="main-section">
+            <div class="card">
+                <h2>Social Network</h2>
+                <svg id="network"></svg>
+            </div>
+            <div class="card">
+                <h2>Epidemic Curve</h2>
+                <canvas id="chart"></canvas>
+            </div>
+        </div>
+
+        <div class="sidebar">
+            <div class="control-panel">
+                <h3>Configuration</h3>
+                <div class="control-group">
+                    <label>Population Size</label>
+                    <input type="number" id="populationSize" value="500" min="50" max="2000" step="50">
+                </div>
+                <div class="control-group">
+                    <label>Initial Infected</label>
+                    <input type="number" id="initialInfected" value="5" min="1" max="100">
+                </div>
+                <div class="control-group">
+                    <label>Transmission Probability</label>
+                    <input type="range" id="transmissionProb" value="0.3" min="0" max="1" step="0.05">
+                    <div class="value-display" id="transProbDisplay">0.30</div>
+                </div>
+                <div class="control-group">
+                    <label>Recovery Time (days)</label>
+                    <input type="number" id="recoveryTime" value="14" min="1" max="60">
+                </div>
+                <div class="control-group">
+                    <label>Average Degree</label>
+                    <input type="number" id="avgDegree" value="6" min="2" max="20">
+                </div>
+                <div class="control-group">
+                    <label>Rewiring Probability</label>
+                    <input type="range" id="rewiringProb" value="0.1" min="0" max="1" step="0.05">
+                    <div class="value-display" id="rewiringProbDisplay">0.10</div>
+                </div>
+                <button class="btn-primary" id="startBtn">Start Simulation</button>
+                <button class="btn-primary" id="resetBtn" disabled>Reset</button>
+            </div>
+
+            <div class="control-panel">
+                <h3>Simulation Control</h3>
+                <button class="btn-secondary" id="stepBtn" disabled>Step (Next Day)</button>
+                <button class="btn-secondary" id="autoPlayBtn" disabled>Auto Play</button>
+                <button class="btn-danger" id="stopAutoBtn" disabled>Stop</button>
+            </div>
+
+            <div class="control-panel">
+                <h3>Interventions</h3>
+                <div class="control-group">
+                    <label>Lockdown Strength</label>
+                    <input type="range" id="lockdownStrength" value="0.5" min="0" max="1" step="0.1">
+                    <div class="value-display" id="lockdownDisplay">0.50</div>
+                </div>
+                <button class="btn-secondary" id="lockdownBtn" disabled>Apply Lockdown</button>
+                <div class="control-group" style="margin-top: 10px;">
+                    <label>Vaccination Fraction</label>
+                    <input type="range" id="vaccinationFrac" value="0.1" min="0" max="1" step="0.05">
+                    <div class="value-display" id="vaccinationDisplay">0.10</div>
+                </div>
+                <button class="btn-secondary" id="vaccineBtn" disabled>Vaccinate</button>
+            </div>
+
+            <div class="stats-box">
+                <h3>Current Statistics</h3>
+                <div class="day-counter" id="dayCounter">Day 0</div>
+                <div class="stat-row">
+                    <span class="stat-label">Susceptible</span>
+                    <span class="stat-value stat-susceptible" id="statSusceptible">0</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Infected</span>
+                    <span class="stat-value stat-infected" id="statInfected">0</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Recovered</span>
+                    <span class="stat-value stat-recovered" id="statRecovered">0</span>
+                </div>
+            </div>
+
+            <div class="legend">
+                <h3>Legend</h3>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #22c55e;"></div>
+                    <span>Susceptible</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #ef4444;"></div>
+                    <span>Infected</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #3b82f6;"></div>
+                    <span>Recovered</span>
+                </div>
+            </div>
+
+            <div class="status" id="status">Ready to start</div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
