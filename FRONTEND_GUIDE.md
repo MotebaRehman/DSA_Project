@@ -265,5 +265,3 @@ This is the **simplest possible frontend** that fulfills all requirements:
 **No build process, no frameworks, just HTML + JavaScript + CDN libraries.**
 
 To start: Run backend → Open `index.html` → Configure & click "Start Simulation"
-
-Good luck with your project! 🎓
